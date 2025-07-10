@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Surah } from '../types';
 import { XIcon } from './icons';
@@ -74,7 +75,7 @@ export const GenerateSermonModal: React.FC<GenerateSermonModalProps> = ({
             try {
                 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                 const response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash-preview-04-17",
+                    model: "gemini-2.5-flash",
                     contents: prompt,
                 });
                 setPreviewVerses(response.text);
