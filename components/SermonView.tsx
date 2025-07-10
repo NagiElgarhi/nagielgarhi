@@ -75,7 +75,7 @@ export const SermonView: React.FC<SermonViewProps> = ({ sermon, onBack, isComple
                             </li>
                         ))}
                     </ul>
-                </section>
+                </Section>
 
                 <Section title="دعوة للاستغفار والتوبة">
                     <p className="text-lg leading-relaxed text-gray-700 italic">{sermon.khutbah1.repentance}</p>

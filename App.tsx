@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { allSermons as initialSermons } from './data/sermons';
 import { surahs } from './data/surahs';
 import { Sermon, GeneratedSermonContent } from './types';
@@ -79,64 +80,76 @@ const App: React.FC = () => {
         setGenerationError(null);
 
         const surahName = surahs.find(s => s.number === surahNumber)?.name;
+        
+        const schema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING, description: "عنوان رئيسي جذاب للخطبة كلها." },
+                verses: { type: Type.STRING, description: `مرجع للآيات المعتمدة (مثال: '${surahName}: ١-٥').` },
+                khutbah1: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "عنوان للخطبة الأولى." },
+                        verses: { type: Type.STRING, description: "النص الكامل للآيات القرآنية محور الخطبة، مع التشكيل الكامل." },
+                        tafsir: { type: Type.STRING, description: "تفسير وشرح للآيات، معتمدًا على كتب التفسير الموثوقة مثل تفسير ابن كثير والطبري والسعدي." },
+                        reflections: { type: Type.STRING, description: "تأملات إيمانية وعملية وعميقة جدًا وموسعة مستنبطة من الآيات." },
+                        messages: {
+                            type: Type.ARRAY,
+                            description: "ثلاث رسائل إيمانية عملية وواضحة على الأقل.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    message: { type: Type.STRING, description: "رسالة موجزة وقوية." },
+                                    explanation: { type: Type.STRING, description: "شرح موسع لكيفية تطبيق الرسالة عمليًا في حياة المسلم اليومية." },
+                                },
+                                required: ['message', 'explanation']
+                            }
+                        },
+                        repentance: { type: Type.STRING, description: "دعوة مؤثرة وقصيرة للتوبة والاستغفار في نهاية الخطبة الأولى." },
+                    },
+                    required: ['title', 'verses', 'tafsir', 'reflections', 'messages', 'repentance']
+                },
+                khutbah2: {
+                    type: Type.OBJECT,
+                    properties: {
+                        hadith: {
+                            type: Type.OBJECT,
+                            properties: {
+                                text: { type: Type.STRING, description: "النص الكامل للحديث مع التشكيل الكامل." },
+                                authenticity: { type: Type.STRING, description: "درجة صحة الحديث (مثال: 'متفق عليه', 'صحيح البخاري', 'رواه مسلم')." },
+                            },
+                            required: ['text', 'authenticity']
+                        },
+                        hadithReflection: { type: Type.STRING, description: "شرح وتأمل في الحديث وكيف يرتبط بالآيات وموضوع الخطبة." },
+                        dua: { type: Type.STRING, description: "دعاء ختامي شامل ومؤثر وجامع." },
+                    },
+                    required: ['hadith', 'hadithReflection', 'dua']
+                },
+            },
+            required: ['title', 'verses', 'khutbah1', 'khutbah2']
+        };
 
-        const jsonStructure = `{"title": "string","verses": "string","khutbah1": {"title": "string","verses": "string","tafsir": "string","reflections": "string","messages": [{"message": "string", "explanation": "string"}],"repentance": "string"},"khutbah2": {"hadith": {"text": "string", "authenticity": "string"},"hadithReflection": "string","dua": "string"}}`;
+        const systemInstruction = `أنت خبير في الشريعة الإسلامية وخطيب جمعة، متخصص في توليد محتوى عالي الجودة وموثوق باللغة العربية الفصحى. مهمتك هي توليد خطبة جمعة متكاملة بناء على الطلب.`;
 
-        const systemInstruction = `أنت خبير في الشريعة الإسلامية وخطيب جمعة، متخصص في توليد محتوى عالي الجودة وموثوق.
-مهمتك الأساسية هي الرد بصيغة JSON صالحة تمامًا وبشكل حصري. لا تضع أي نص قبل أو بعد كائن JSON.
-التزم بالقواعد التالية بشكل صارم لا هوادة فيه:
-1.  الرد الكامل يجب أن يكون كائن JSON واحد فقط.
-2.  جميع أسماء الخصائص (keys) يجب أن تكون محاطة بعلامات اقتباس مزدوجة (e.g., "title"). لا تستخدم علامات اقتباس مفردة أو تتركها بدون اقتباسات. هذا شرط إلزامي.
-3.  جميع القيم النصية (strings) يجب أن تكون محاطة بعلامات اقتباس مزدوجة.
-4.  يجب تهريب (escape) أي علامات اقتباس مزدوجة (") داخل النصوص باستخدام شرطة مائلة عكسية (\\").
-5.  لا تضف أي فواصل زائدة (trailing commas) في نهاية الكائنات أو المصفوفات.
-6.  تأكد من أن الرد النهائي هو JSON صالح 100% يمكن تحليله مباشرة.`;
-
-        const userPrompt = `مهمتك: قم بتوليد خطبة جمعة متكاملة، عميقة، ومفصلة (حوالي 3000 كلمة) باللغة العربية الفصحى، معتمدة على مصادر إسلامية موثوقة ومتفق عليها.
+        const userPrompt = `مهمتك: قم بتوليد خطبة جمعة متكاملة، عميقة، ومفصلة (حوالي 2500-3000 كلمة) معتمدة على مصادر إسلامية موثوقة ومتفق عليها.
 الموضوع: سورة "${surahName}".
-${topic ? `التركيز الخاص: الآيات في "${topic}".` : 'التركيز العام: أهم مقاصد السورة.'}
+${topic ? `التركيز الخاص: "${topic}".` : 'التركيز العام: أهم مقاصد السورة.'}
 
-التزم بالهيكل والمواصفات التالية بدقة شديدة عند توليد الرد بصيغة JSON:
-- title (string): عنوان رئيسي جذاب للخطبة كلها.
-- verses (string): مرجع للآيات المعتمدة (مثال: "البقرة: ١-٥").
-- khutbah1:
-  - title (string): عنوان للخطبة الأولى.
-  - verses (string): النص الكامل للآيات القرآنية محور الخطبة، مع التشكيل.
-  - tafsir (string): تفسير وشرح للآيات. يجب أن تذكر نص الآية ثم تتبعها بتفسيرها، معتمدًا على كتب التفسير الموثوقة.
-  - reflections (string): تأملات إيمانية وعملية مستنبطة من الآيات. يجب أن يكون هذا القسم موسعًا جدًا وعميقًا (توسع بنسبة 300% عن المعتاد).
-  - messages (array of objects): رسائل إيمانية عملية وواضحة. كل كائن في المصفوفة يجب أن يحتوي على:
-    - message (string): رسالة موجزة.
-    - explanation (string): شرح موسع لهذه الرسالة في 5 أسطر على الأقل، يوضح كيفية تطبيقها عمليًا.
-  - repentance (string): دعوة قصيرة للتوبة والاستغفار في نهاية الخطبة الأولى.
-- khutbah2:
-  - hadith (object): حديث نبوي شريف مرتبط بموضوع الخطبة. الكائن يجب أن يحتوي على:
-    - text (string): النص الكامل للحديث مع التشكيل.
-    - authenticity (string): درجة صحة الحديث (مثال: "متفق عليه"، "صحيح البخاري"، "رواه مسلم").
-  - hadithReflection (string): شرح وتأمل في الحديث وكيف يرتبط بالآيات وموضوع الخطبة.
-  - dua (string): دعاء ختامي شامل ومؤثر.
-
-اتبع هيكل الـ JSON التالي حرفيًا:
-${jsonStructure}`;
+يجب أن تكون الخطبة ذات جودة عالية جدًا، وتتضمن تفسيرًا عميقًا، تأملات عملية وثرية، ورسائل إيمانية واضحة، مع حديث صحيح ودعاء مؤثر في الخطبة الثانية.`;
 
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview-04-17",
+                model: "gemini-2.5-flash",
                 contents: userPrompt,
                 config: {
                     systemInstruction: systemInstruction,
                     responseMimeType: "application/json",
+                    responseSchema: schema,
                 },
             });
             
-            let jsonStr = response.text.trim();
-            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            const match = jsonStr.match(fenceRegex);
-            if (match && match[2]) {
-                jsonStr = match[2].trim();
-            }
-
-            const generatedContent: GeneratedSermonContent = JSON.parse(jsonStr);
+            const generatedContent: GeneratedSermonContent = JSON.parse(response.text.trim());
 
             const newSermon: Sermon = {
                 id: sermons.length + 1,

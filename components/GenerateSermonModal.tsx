@@ -106,8 +106,8 @@ export const GenerateSermonModal: React.FC<GenerateSermonModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl transform transition-all" role="document">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl transform transition-all max-h-[90vh] flex flex-col" role="document">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
           <h2 className="text-2xl font-bold text-teal-800">توليد خطبة جديدة</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XIcon className="w-6 h-6" />
@@ -115,14 +115,16 @@ export const GenerateSermonModal: React.FC<GenerateSermonModalProps> = ({
         </div>
         
         {isGenerating ? (
-          <div className="p-12 text-center">
-            <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-lg text-gray-700">جاري توليد الخطبة...</p>
-            <p className="text-sm text-gray-500">قد يستغرق هذا بعض الوقت. الرجاء عدم إغلاق النافذة.</p>
+          <div className="p-12 text-center flex-grow flex items-center justify-center">
+            <div>
+              <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-lg text-gray-700">جاري توليد الخطبة...</p>
+              <p className="text-sm text-gray-500">قد يستغرق هذا بعض الوقت. الرجاء عدم إغلاق النافذة.</p>
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="p-8 space-y-6">
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 p-8 space-y-6 overflow-y-auto">
               {error && (
                   <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
                       <p className="font-bold">حدث خطأ</p>
@@ -188,7 +190,7 @@ export const GenerateSermonModal: React.FC<GenerateSermonModalProps> = ({
               )}
 
             </div>
-            <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-end items-center gap-4">
+            <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-end items-center gap-4 flex-shrink-0 border-t border-gray-200">
                <button type="button" onClick={onClose} className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-semibold">
                 إلغاء
               </button>
